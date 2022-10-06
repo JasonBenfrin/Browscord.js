@@ -4,14 +4,24 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "compile": "browserify index.js -o browscord.js"
+    "compile": "webpack",
+    "serve": "webpack serve"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/pako": "^2.0.0",
     "@types/platform": "^1.3.4",
+    "bodec": "^1.1.0",
     "discord-api-types": "^0.37.11",
+    "etf.js": "^1.0.1",
+    "pako": "^2.0.4",
     "platform": "^1.3.6",
-    "ts-loader": "^9.4.1"
+    "util": "^0.12.4"
+  },
+  "devDependencies": {
+    "ts-loader": "^9.4.1",
+    "webpack-cli": "^4.10.0",
+    "webpack-dev-server": "^4.11.1"
   }
 }

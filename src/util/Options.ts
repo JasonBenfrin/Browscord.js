@@ -1,6 +1,5 @@
-import { GatewayIdentifyData } from "discord-api-types/v10";
+import { GatewayIdentifyData, GatewayURLQuery } from "discord-api-types/v10";
 import platform from "platform";
-import { SocketURLOptions } from "../client/Client";
 
 export const defaultIdentifyOption : GatewayIdentifyData = {
   token : '',
@@ -9,10 +8,11 @@ export const defaultIdentifyOption : GatewayIdentifyData = {
     browser: 'browscord.js',
     device: 'browscord.js'
   },
-  intents: 0
+  intents: 0,
+  compress: true
 }
 
-export const defaultSocketURLOption : SocketURLOptions = {
-  v: 10,
-  encoding: 'json'
+export const defaultSocketURLOption : GatewayURLQuery = {
+  v: '10',
+  encoding: 'etf',
 }
