@@ -24,7 +24,7 @@ module.exports = {
     }
   },
   output: {
-    filename: 'bundle.js',
+    filename: 'browscord.js',
     path: path.resolve(__dirname, 'dist'),
     library: ['Discord']
   },
