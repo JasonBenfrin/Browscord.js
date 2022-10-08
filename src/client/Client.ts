@@ -8,6 +8,7 @@ import invalidSessionReceive from "./gateway/receive/invalidSession"
 import reconnectReceive from "./gateway/receive/reconnect"
 import { pack, unpack } from "etf.js"
 import { inflate } from "pako"
+import zlib from 'zlib'
 
 class Client extends EventTarget {
 
@@ -16,6 +17,7 @@ class Client extends EventTarget {
   public declare ws: WebSocket
 
   private _baseUrl: string = 'wss://gateway.discord.gg'
+  private declare inflator: zlib.Inflate
 
   protected declare _sessionId: string
   protected declare _resumeGatewayURL: string
@@ -33,7 +35,7 @@ class Client extends EventTarget {
     this._pack = socketURLOptions.encoding == 'etf' ? pack : JSON.stringify
     this._unpack = socketURLOptions.encoding == 'etf' ? unpack : JSON.parse
     if (this.socketURLOptions.compress) {
-      throw 'Zlib-stream transport compression is not supported yet!'
+      this.inflator = zlib.createInflate()
     }
   }
 
@@ -53,57 +55,83 @@ class Client extends EventTarget {
     })
     
     this.ws = new WebSocket(this._baseUrl+'/?'+parameters.toString())
+    if (this.socketURLOptions.compress == 'zlib-stream') {
+      let buffer = []
 
+      this.inflator.on('data', chunk => {
+        buffer = buffer.concat(Array.from(chunk))
+        try {
+          const encoded = this.socketURLOptions.encoding == 'json' ? new TextDecoder().decode(Uint8Array.from(buffer)) : Uint8Array.from(buffer)
+          this._unpack(encoded)
+          this._payloadHandler(null, null, encoded)
+          buffer = []
+        } catch { return }
+      })
+    }
     this.ws.onmessage = async (e: MessageEvent) => {
+      this.dispatchEvent(new CustomEvent('rawData', {detail: e.data}))
       let uint8 : Uint8Array
       if (e.data instanceof Blob) uint8 = new Uint8Array(await e.data.arrayBuffer())
 
-      let data : Uint8Array | string
+      
+      if (this.socketURLOptions.compress == 'zlib-stream') {
+        this.inflator.write(uint8)        
+      } else {
+        this._payloadHandler(e, uint8)
+      }
+    }
 
+    this.ws.onerror = (e) => {
+      console.log(e)
+    }
+
+    return this
+  }
+
+  private _payloadHandler(e?: any, uint8?: Uint8Array, data? : Uint8Array | string) {
+    if (!data) {
       if (this.socketURLOptions.encoding == 'json') {
         if (e.data instanceof Blob && uint8[0] == 120) data = inflate(uint8, { to: 'string' })
         else data = e.data
       } else {
         data = uint8
       }
+    }
 
-      const payload : GatewayReceivePayload = 
-      // To make bigints to string, stringify and parse
-      JSON.parse(
-        JSON.stringify(
-          this._unpack(data),
-          (_, value) => {
-            if (typeof value != 'bigint') return value
-            const int = parseInt(value.toString())
-            return Number.isSafeInteger(int) ? int : value.toString()
-         }
-        )
+    const payload : GatewayReceivePayload = 
+    // To make bigints to string, stringify and parse
+    JSON.parse(
+      JSON.stringify(
+        this._unpack(data),
+        (_, value) => {
+          if (typeof value != 'bigint') return value
+          const int = parseInt(value.toString())
+          return Number.isSafeInteger(int) ? int : value.toString()
+       }
       )
-      this.dispatchEvent(new CustomEvent('raw', { detail: payload }))
-      if (payload.t) this._sequenceNumber = payload.s
-      switch (payload.op) {
-        case GatewayOpcodes.Dispatch:
-          dispatchReceive.call(this, payload)
-          break;
-        case GatewayOpcodes.Heartbeat:
-          heartbeatReceive.call(this, payload)
-          break;
-        case GatewayOpcodes.Reconnect:
-          reconnectReceive.call(this, payload)
-          break;
-        case GatewayOpcodes.InvalidSession:
-          invalidSessionReceive.call(this, payload)
-          break;
-        case GatewayOpcodes.Hello:
-          helloReceive.call(this, payload)
-          break;
-        case GatewayOpcodes.HeartbeatAck:
-          heartbeatAckReceive.call(this)
-          break;
-      }
-    } 
-
-    return this
+    )
+    this.dispatchEvent(new CustomEvent('raw', { detail: payload }))
+    if (payload.t) this._sequenceNumber = payload.s
+    switch (payload.op) {
+      case GatewayOpcodes.Dispatch:
+        dispatchReceive.call(this, payload)
+        break;
+      case GatewayOpcodes.Heartbeat:
+        heartbeatReceive.call(this, payload)
+        break;
+      case GatewayOpcodes.Reconnect:
+        reconnectReceive.call(this, payload)
+        break;
+      case GatewayOpcodes.InvalidSession:
+        invalidSessionReceive.call(this, payload)
+        break;
+      case GatewayOpcodes.Hello:
+        helloReceive.call(this, payload)
+        break;
+      case GatewayOpcodes.HeartbeatAck:
+        heartbeatAckReceive.call(this)
+        break;
+    }
   }
 
   protected declare _pack: Function
