@@ -1,4 +1,4 @@
-import { GatewayIdentifyData, GatewayReceivePayload, GatewayOpcodes, GatewayURLQuery } from "discord-api-types/v10"
+import { GatewayIdentifyData, GatewayReceivePayload, GatewayOpcodes, GatewayURLQuery, GatewayDispatchEvents } from "discord-api-types/v10"
 import { defaultIdentifyOption, defaultSocketURLOption } from "../util/Options"
 import dispatchReceive from "./gateway/receive/dispatch"
 import heartbeatReceive from "./gateway/receive/heartbeat"
@@ -6,6 +6,7 @@ import heartbeatAckReceive from "./gateway/receive/heartbeatAck"
 import helloReceive from "./gateway/receive/hello"
 import invalidSessionReceive from "./gateway/receive/invalidSession"
 import reconnectReceive from "./gateway/receive/reconnect"
+import resumeSend from "./gateway/send/resume"
 import { pack, unpack } from "etf.js"
 import { inflate } from "pako"
 import zlib from 'zlib'
@@ -16,14 +17,15 @@ class Client extends EventTarget {
   public socketURLOptions: GatewayURLQuery
   public declare ws: WebSocket
 
-  private _baseUrl: string = 'wss://gateway.discord.gg'
   private declare inflator: zlib.Inflate
 
+  protected _baseUrl: string = 'wss://gateway.discord.gg'
   protected declare _sessionId: string
   protected declare _resumeGatewayURL: string
   protected declare _heartbeatTimeout: ReturnType<typeof setTimeout>
   protected declare _heartbeatInterval: number
   protected _sequenceNumber: number | null = null
+  protected _resuming: boolean = false
 
   constructor(
     identifyOptions: GatewayIdentifyData = defaultIdentifyOption,
@@ -39,22 +41,21 @@ class Client extends EventTarget {
     }
   }
 
-  /**
-   * Login with the given credentials
-   * @param {string} [token = this.options.token] Token to login
-   * @returns {Client} The client
-   */
+  private _urlConstructor(base: string, parameters: GatewayURLQuery) : string {
+    base += '/?'
+    Object.entries(parameters).forEach(([key, value]) => {
+      base += `${key}=${value}&`
+    })
+    return base.slice(0, -1)
+  }
+
   // TODO: Organize Errors
-  async login(token : string = this.identifyOptions.token): Promise<Client> {
+  login(token : string = this.identifyOptions.token): Client {
     if (!token || token == '') throw 'Invalid token'
     this.identifyOptions.token = token
     
-    const parameters = new URLSearchParams()
-    Object.entries(this.socketURLOptions).forEach(([key, value] : Array<string>) => {
-      parameters.append(key, value)
-    })
-    
-    this.ws = new WebSocket(this._baseUrl+'/?'+parameters.toString())
+    this.ws = new WebSocket(this._urlConstructor(this._baseUrl, this.socketURLOptions))
+    this.ws.onopen = this._onOpen.bind(this)
     if (this.socketURLOptions.compress == 'zlib-stream') {
       let buffer = []
 
@@ -68,31 +69,51 @@ class Client extends EventTarget {
         } catch { return }
       })
     }
-    this.ws.onmessage = async (e: MessageEvent) => {
-      this.dispatchEvent(new CustomEvent('rawData', {detail: e.data}))
-      let uint8 : Uint8Array
-      if (e.data instanceof Blob) uint8 = new Uint8Array(await e.data.arrayBuffer())
-
-      
-      if (this.socketURLOptions.compress == 'zlib-stream') {
-        this.inflator.write(uint8)        
-      } else {
-        this._payloadHandler(e, uint8)
-      }
-    }
-
-    this.ws.onerror = (e) => {
-      console.log(e)
-    }
 
     return this
   }
 
-  private _payloadHandler(e?: any, uint8?: Uint8Array, data? : Uint8Array | string) {
+  private _onOpen (this: Client) {
+    const websocketSend = this.ws.send.bind(this.ws)
+    this.ws.send = (data) => {
+      this.dispatchEvent(new CustomEvent('rawSendData', {detail: data}))
+      this.dispatchEvent(new CustomEvent('rawSend', {detail: this._unpack(data)}))
+      websocketSend(data)
+    }
+    this.ws.onmessage = this._onMessage.bind(this)
+    this.ws.onerror = this._onError.bind(this)
+    this.ws.onclose = this._onClose.bind(this)
+  }
+
+  private async _onMessage (e: MessageEvent<Blob | string>) {
+    this.dispatchEvent(new CustomEvent('rawData', {detail: e.data}))
+    let uint8 : Uint8Array
+    if (e.data instanceof Blob) uint8 = new Uint8Array(await e.data.arrayBuffer())
+
+    if (this.socketURLOptions.compress == 'zlib-stream') {
+      this.inflator.write(uint8)        
+    } else {
+      this._payloadHandler(e, uint8)
+    }
+  }
+
+  private _onError (e: any) {
+    console.log(e)
+  }
+
+  private _onClose (e: { code: number }) {
+    this.dispatchEvent(new CustomEvent('disconnect', { detail: e }))
+    if (!e.code || e.code == 4004 || 4010 < e.code && e.code < 4014 || e.code < 4000) return this.dispatchEvent(new CustomEvent('end', {detail: e}))
+    this._resuming = true
+    this.ws = new WebSocket(this._urlConstructor(this._resumeGatewayURL || this._baseUrl, this.socketURLOptions))
+    this.ws.onopen = this._onOpen.bind(this)
+  } 
+
+  private _payloadHandler(e?: MessageEvent<Blob | string>, uint8?: Uint8Array, data? : Uint8Array | string) {
     if (!data) {
       if (this.socketURLOptions.encoding == 'json') {
         if (e.data instanceof Blob && uint8[0] == 120) data = inflate(uint8, { to: 'string' })
-        else data = e.data
+        else if (typeof e.data == 'string') data = e.data
       } else {
         data = uint8
       }
@@ -111,7 +132,13 @@ class Client extends EventTarget {
       )
     )
     this.dispatchEvent(new CustomEvent('raw', { detail: payload }))
-    if (payload.t) this._sequenceNumber = payload.s
+
+    if(this._resuming) {
+      this._resuming = false
+      return resumeSend.call(this)
+    }
+
+    if (payload.s) this._sequenceNumber = payload.s
     switch (payload.op) {
       case GatewayOpcodes.Dispatch:
         dispatchReceive.call(this, payload)
@@ -140,5 +167,4 @@ class Client extends EventTarget {
 
 //TODO: I don't know shards
 //TODO: validate user inputs
-//TODO: throw error when two compress methods are used
 export { Client }

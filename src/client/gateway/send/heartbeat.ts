@@ -6,5 +6,6 @@ export default function heartbeatSend (this: Client) {
     op: GatewayOpcodes.Heartbeat,
     d: this._sequenceNumber
   }
+  if (this.ws.readyState != this.ws.OPEN) return
   this.ws.send(this._pack(payload))
 }

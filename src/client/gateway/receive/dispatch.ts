@@ -1,11 +1,11 @@
 import { GatewayDispatchEvents, GatewayDispatchPayload } from "discord-api-types/v10";
 import { Client } from "../../Client";
+import readyDispatch from "../../dispatchEvents/Ready";
 
 export default function dispatchReceive (this: Client, payload: GatewayDispatchPayload) {
   switch (payload.t) {
     case GatewayDispatchEvents.Ready:
-      this._sessionId = payload.d.session_id
-      this._resumeGatewayURL = payload.d.resume_gateway_url
+      readyDispatch.call(this, payload)
       break;
   }
 }

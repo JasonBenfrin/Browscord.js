@@ -1,7 +1,7 @@
 import { GatewayOpcodes, GatewayResume } from "discord-api-types/v10";
 import { Client } from "../../Client";
 
-export function resumeSend(this: Client) {
+export default function resumeSend(this: Client) {
   const payload: GatewayResume = {
     op: GatewayOpcodes.Resume,
     d: {
@@ -10,4 +10,7 @@ export function resumeSend(this: Client) {
       token: this.identifyOptions.token
     }
   }
+
+  this.dispatchEvent(new CustomEvent('resuming'))
+  this.ws.send(this._pack(payload))
 }
