@@ -11,7 +11,6 @@
 This library is still in development. Thanks for checking it out! ❤️
 
 ## About
-op=docs
 A simple and easy library to interact with [Discord Gateway API](https://discord.com/developers/docs/topics/gateway) in your browser.
 
 ## Requirements
