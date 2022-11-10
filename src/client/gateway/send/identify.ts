@@ -1,5 +1,5 @@
 import { GatewayIdentify, GatewayOpcodes } from "discord-api-types/v10";
-import { Client } from "../../Client";
+import Client from "../../Client";
 
 export default function identifySend (this: Client) {
   const payload : GatewayIdentify = {

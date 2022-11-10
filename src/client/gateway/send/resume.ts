@@ -1,7 +1,8 @@
 import { GatewayOpcodes, GatewayResume } from "discord-api-types/v10";
-import { Client } from "../../Client";
+import Client from "../../Client";
 
 export default function resumeSend(this: Client) {
+  if (!this._sequenceNumber) return console.error('No sequence number found!')
   const payload: GatewayResume = {
     op: GatewayOpcodes.Resume,
     d: {

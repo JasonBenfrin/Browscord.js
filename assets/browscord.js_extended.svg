@@ -24,12 +24,12 @@
      inkscape:pagecheckerboard="1"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="0.70710678"
-     inkscape:cx="773.57482"
-     inkscape:cy="201.52543"
-     inkscape:window-width="1297"
+     inkscape:zoom="0.35355339"
+     inkscape:cx="86.267027"
+     inkscape:cy="145.664"
+     inkscape:window-width="1366"
      inkscape:window-height="704"
-     inkscape:window-x="69"
+     inkscape:window-x="0"
      inkscape:window-y="27"
      inkscape:window-maximized="1"
      inkscape:current-layer="layer1"
@@ -162,7 +162,7 @@
        stroke="#fcfcfc" />
     <g
        id="g4401"
-       transform="translate(263.85006,-9.730563)">
+       transform="matrix(1.2032718,0,0,1.2032718,285.21394,-23.809581)">
       <g
          id="slogan"
          style="font-style:oblique;font-weight:700;font-size:32px;line-height:1;font-family:'Uni Neue';font-variant-ligatures:none;text-align:center;text-anchor:middle"

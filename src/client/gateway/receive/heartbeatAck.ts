@@ -1,4 +1,4 @@
-import { Client } from "../../Client";
+import Client from "../../Client";
 import heartbeatSend from "../send/heartbeat";
 
 export default function heartbeatAckReceive (this: Client) {

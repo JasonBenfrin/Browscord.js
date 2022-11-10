@@ -1,5 +1,5 @@
 import { GatewayHeartbeat, GatewayOpcodes } from "discord-api-types/v10";
-import { Client } from "../../Client";
+import Client from "../../Client";
 
 export default function heartbeatSend (this: Client) {
   const payload : GatewayHeartbeat = {

@@ -37,3 +37,7 @@ client.login("TOKEN")
 - Make most features available in [discord.js](https://github.com/discordjs/discord.js) also available in [browscord.js](https://github.com/JasonBenfrin/browscord.js)
 - Make sharding available
 - Make a guide or tutorial
+
+## Coming Soon
+
+- Support for cloudflare workers, will include interactions with [Discord API](https://discord.com/developers/docs/topics/getting-started)

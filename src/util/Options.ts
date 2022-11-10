@@ -1,6 +1,14 @@
 import { GatewayIdentifyData, GatewayURLQuery } from "discord-api-types/v10";
 import platform from "platform";
 
+export interface ClientOptions {
+  identifyOptions: GatewayIdentifyData,
+  socketURLOptions?: GatewayURLQuery,
+  useRest?: boolean,
+  shardId?: number,
+  shardCount?: number,
+}
+
 export const defaultIdentifyOption : GatewayIdentifyData = {
   token : '',
   properties : {

@@ -1,3 +1,5 @@
-export * from "./client/Client"
+// Browscord.js
+export { default as Client } from './client/Client'
 
-export * from "discord-api-types/v10"
+// Other Libraries
+export * from 'discord-api-types/v10'
