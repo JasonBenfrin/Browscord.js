@@ -40,4 +40,4 @@ client.login("TOKEN")
 
 ## Coming Soon
 
-- Support for cloudflare workers, will include interactions with [Discord API](https://discord.com/developers/docs/topics/getting-started)
+- Support for cloudflare workers, will include interactions with [Discord API](https://discord.com/developers/docs/getting-started)
